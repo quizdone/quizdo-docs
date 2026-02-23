@@ -51,42 +51,8 @@
    - The app can use LLM (AI) to evaluate the exam (test)
 7. Everyone is happy and keeps using the app
 
-## Containers
->
-> Containers are used to automate many things in the development and production.
->
-> Request to the server are proxied by Nginx to the container (**Frontend** or **API**)
->
-> Also they're made to add part of security to the app
->
-> We use `docker-compose.yml` and `docker-compose.prod.yml` for production
+## Documentation
 
-1. **Frontend**
-   - Single Page Application (SPA)
-   - Technologies: React (NextJS), TypeScript, Tailwind, AuthJS with DrizzleAdapter, Drizzle ORM
-   - Functions:
-        - Public website
-        - User authentication (AuthJS with DrizzleAdapter)
-        - Database access using Drizzle ORM
-        - User interface for managing and displaying examples, tests, campaigns (progressive mode)
-        - Interactive student testing and collection of responses, teacher access to results
-   - Communication with **Backend** through API, using NextJS server actions.
-
-2. **Backend**
-   - Microservice architecture
-   - REST API + GRPC
-   - Technologies: Go, Fiber, GORM
-   - Function:
-      - Provides data to the frontend
-      - Generating data and rendering questions/tests
-      - Connecting and managing WebSocket live exams
-      - Stores data in the database.
-
-3. **Database**
-   - Relational Database Management System (RDBMS)
-   - Technologies: PostgreSQL
-   - Function: Storing data in two separate databases:
-     - **Frontend Database**: Users, authentication, sessions, API keys, subscriptions, payments, user preferences
-     - **Backend Databases**: Categories, questions, exams, business logic, live exams
-
-For detailed architecture diagram, see [Architecture Documentation](./architecture.md).
+- [**Architecture**](general/architecture.md) — High-level architecture, containers, deployment, and workflow.
+- [**Backend**](backend/README.md) — Microservices (identity, content, collector, evaluator), layout, running.
+- [**Frontend**](frontend/README.md) — GUI (Next.js/React), consumed APIs, tech.

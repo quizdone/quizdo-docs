@@ -1,32 +1,36 @@
-# Quizdo backend (API)
+# Backend (microservices)
 
-- HTTP server with Gin
-- Database (MariaDB) managed by [GORM](https://gorm.io/) (migration, CRUD ops),
-- Errors gathered with Sentry.io
-- Provides commands (in `./cmd/`) for
-    1. DB migration (create tables)
-    1. DB seed basic data (root user, categories)
-    1. Generating Typescript types for frontend
+The backend is split into **microservices**, each with its own entrypoint, data, and communication style. Shared code (DB, JWT, config) lives in `backend/shared/`. Data structures are shared with the frontend via **Protobuf** in `proto/`.
 
-## Endpoint groups
+## Architecture
 
-- [`/Cat/`](./category/README.md) - Category CRUD operations
+- Each service has its own **database schema** for data isolation.
+- Services use **gRPC** or **REST (Fiber)** for APIs.
+- **GORM** with RLS (Row Level Security) for DB access.
+- Auth is handled by **AuthJS** in the app; the identity service validates JWTs and resolves user/session for other services.
 
-- [`/Question/`](./question/README.md) - Questions CRUD operations and rendering
+## Services
 
-- [`/Exam/`](./exam/README.md) - Exams CRUD operations, rendering and live WS connection
+| Service   | Description |
+|----------|-------------|
+| [**Identity**](identity/README.md) | JWT/session validation, user resolution, UUID→internal ID; gRPC for other services. |
+| [**Content**](content/README.md)   | Content API: categories, questions, exams, answers; HTTP (Fiber). |
+| [**Collector**](collector/README.md) | Runs live sessions; file-based test logging (text files using JSON lines format) for results and behaviors; consumed by Evaluator. |
+| [**Evaluator**](evaluator/README.md) | Evaluation API: list results from Collector (file-based logs), grading, reports. |
 
-## Model (data structure)
->
-> Models (data structures) and other backend docs are located on the backend [Go App submodule](https://gitlab.com/pisemkomat/goapp)
+## Repo layout
 
-- Backend models are made to hold data and define DB structure for questions, categorization, quizes and translation of these.
-- Backend serves for basic **CRUD** operations on these resource
+- `backend/cmd/<service>/` — entrypoint and config per service (e.g. `main.go`, `.env`, Dockerfile).
+- `backend/services/<service>/` — service logic (handlers, services, repos, gRPC).
+- `backend/shared/` — shared code (DB, JWT, config, logging).
+- `proto/` — Protobuf definitions; run `make proto` from project root to generate code.
 
-### Protobuf and protovalidate integration
+## Running
 
-Protobuf makes it possible to share the same data structures between frontend and backend services.
+- Run a service from the repo root, e.g. `make be` (see Makefile), or from `backend/cmd/<service>` with the right `.env`.
+- Migrations and seeds are service-specific; see each service’s README.
 
-- Protobuf and protovalidate integration is located in the `projectroot/proto/` directory
-- To generate the code, run `make proto-generate` from the `projectroot/` directory
-- To clean the generated code, run `make proto-clean` from the root of the repository
+## Related
+
+- [**Generator**](generator/README.md) — External Go tool (separate repo) used by the content service to generate and validate questions from parametric data.
+- [**Collector**](collector/README.md) — Runs live sessions and writes file-based test logs (text files) consumed by the Evaluator.
