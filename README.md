@@ -53,6 +53,6 @@
 
 ## Documentation
 
-- [**Architecture**](general/architecture.md) — High-level architecture, containers, deployment, and workflow.
+- [**ADRs**](adr/README.md) — Architecture Decision Records
 - [**Backend**](backend/README.md) — Microservices (identity, content, collector, evaluator), layout, running.
 - [**Frontend**](frontend/README.md) — GUI (Next.js/React), consumed APIs, tech.
