@@ -7,7 +7,7 @@ The backend is split into **microservices**, each with its own entrypoint, data,
 - Each service has its own **database schema** for data isolation.
 - Services use **gRPC** or **REST (Fiber)** for APIs.
 - **GORM** with RLS (Row Level Security) for DB access.
-- Auth is handled by **AuthJS** in the app; the identity service validates JWTs and resolves user/session for other services.
+- Auth is handled by **AuthJS** in the app (frontend signs JWTs with an RSA private key); backend services that protect APIs (e.g. Content) verify JWTs with an RSA public key supplied via Docker secrets. See [ADR 0007: Docker Secrets and RSA Key Pair for JWT](../adr/0007-docker-secrets-rsa-jwt.md).
 
 ## Services
 
