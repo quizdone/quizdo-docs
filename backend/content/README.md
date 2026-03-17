@@ -5,7 +5,8 @@ HTTP API (Fiber) for content management of categories, questions, exams, and cam
 ## Role
 
 - **CRUD** for content resources: categories, questions, exams, and campaigns.
-- **REST API** with JWT verification — tokens are signed by the frontend with an RSA private key and verified here with the matching public key (supplied via Docker secret `cnt_pub_key`; see [ADR 0007](../adr/0007-docker-secrets-rsa-jwt.md)).
+- **REST API** with JWT verification — JWTs are signed by Next.js with `jwt_private_key` and verified here with `jwt_public_key` (see [ADR 0007](../adr/0007-docker-secrets-rsa-jwt.md)).
+- **Loading profile from Identity service** — **when JWT is verified by middleware**, the service calls **Identity gRPC** `GetUserProfile` to load user data and internal profile data for using in the app.
 
 ## Endpoint groups
 

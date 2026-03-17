@@ -11,9 +11,7 @@ Auth and JWT important keys must not live in `.env` or in images. The frontend s
 ## Decision
 
 - **Secrets in repo root** — A `secrets/` directory holds generated secret files; it is gitignored except for keeping the directory.
-- **One RSA key pair** — One private key (frontend signs JWTs); each backend that verifies gets the matching public key. Identity does not use a key.
-- **Docker secrets at runtime** — Keys are not in images; they are mounted from the host when containers run. Frontend receives the private key; each service (e.g. Content) receives its public key.
-- **Generation** — A single make target generates/overwrites all secret files so keys can be rotated easily.
+- **Generation** — `make secrets` generates new RSA key pairs and writes them to `secrets/`, dont forget to mention the new key in the `compose.yaml` secrets section.
 
 ## Consequences
 
