@@ -1,4 +1,4 @@
-# ADR 0001: Per-resource permission tables
+# ADR 0008: Per-resource permission tables
 
 ## Status
 
@@ -16,6 +16,46 @@ Alternative thoughts:
 We will store access control bitmask permissions in **dedicated relational tables per resource type**.  
 > E.g. `category_permissions` with rows keyed by user and category, each row representing a bitmask (unix like) permissions for a single user.
 
+## Custom interface
+
+The repository layer uses an embeddable contract so each resource repository exposes permission checks and updates in a consistent shape.
+
+Implementations must satisfy `iface.WithPermission[P]` (`backend/shared/lib/iface/with_permission.go`). `UserCan` / `UpdatePermissions` are intended for use from handlers, services, or HTTP middleware when deciding whether to allow an action.
+
+```go
+// Shared embeddable WithPermission interface (generic over permission type P)
+type WithPermission[P any] interface {
+	UserCan(ctx context.Context, resourceID int32, userID int32, perm P) (bool, error)
+	UpdatePermissions(ctx context.Context, resourceID int32, userID int32, perm P) error
+}
+
+// Example: CategoryRepository embeds WithPermission for category.Permission
+type CategoryRepository interface {
+	iface.WithPermission[category.Permission]
+	List(ctx context.Context, scopes ...func(*gorm.DB) *gorm.DB) ([]category.Category, error)
+	GetByID(ctx context.Context, id uint32) (*category.Category, error)
+	Save(ctx context.Context, cat *category.Category) error
+	Delete(ctx context.Context, ids []uint32) error
+}
+
+func NewCategoryRepository(db *gorm.DB) CategoryRepository {
+	return &categoryRepository{
+		db: db,
+	}
+}
+```
+
+## Middleware (pattern)
+
+HTTP middleware (or equivalent) can run before mutating handlers and call `UserCan` (or service logic built on the repository) so unauthorized requests return **403 Forbidden** without touching domain logic.
+
+The middleware would take a repository (or narrower interface) that implements `iface.WithPermission[P]` for the relevant resource. Illustrative Fiber-style wiring:
+
+```go
+app.Post("/categories", middleware.WithPermission(categoryRepository), handler.CreateCategory)
+```
+
+
 ## Consequences
 
 ### Benefits
@@ -26,6 +66,8 @@ We will store access control bitmask permissions in **dedicated relational table
 - **Less contention on hot rows**: Permission changes update narrow rows in the permission table instead of rewriting large resource rows that are also updated for content.
 - **Clearer security and auditing**: Optional columns (`granted_at`, `granted_by`, source) and constraints (foreign keys, uniqueness per principal/resource) are straightforward; row-level security policies can reference a single, well-defined join pattern per resource.
 - **Consistent cross-cutting pattern**: The same shape (principal, resource id, encoded rights) can be repeated per domain entity, keeping services and migrations predictable.
+- **Less code duplication**: The middleware can be used for any resource type and can be changed in single place.
+- **Request can be blocked before any action is taken**: This will save resources and time and help with auditing.
 
 ### Tradeoffs
 
@@ -35,4 +77,4 @@ We will store access control bitmask permissions in **dedicated relational table
 
 ## References
 
-- Example: `CategoryPermission` in the content service maps users to categories with permission bits in a dedicated table.
+- Example entity: `CategoryPermission` in the content service maps users to categories with permission bits in a dedicated table.
