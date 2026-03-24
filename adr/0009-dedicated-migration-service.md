@@ -20,8 +20,8 @@ Domains expose migration entrypoints in **`services/<servicename>/entities/migra
 
 They **do not** import the whole migration orchestrator (no circular dependency). `TableMigrationConfig`, hooks, and custom steps live in that file in the top level of the entity package.
 
-- **`backend/cmd/migration`** — On production, it will load config, connect to the DB, and call each service’s `entities.Migrate` import (e.g. `services/content/entities`), then exit successfully.
-- This service will use the POSTGRES default user credentials from the environment variables to be able to run the migrations for all other services.
+- **`backend/cmd/migration`** — Loads config (shared host/port/user/pass), then for **each** registered service opens a connection to that service’s database name from env (e.g. **`CNT_DB_NAME`**, **`IDE_DB_NAME`**) and calls the matching `entities.Migrate`. The effective `DB_NAME` changes **per step** during the run; a placeholder `DB_NAME` in env may exist only to satisfy config parsing.
+- We will use the Postgres superuser (or equivalent) from env so it can migrate every service database in one process.
 - **Development** — In development migrations are run as parallell service that will watch for changes in the entities and run the migrations.  
     - Docker Compose service **`be-migration`** will use the same **Air**-based dev image pattern as other Go services (`quizdo-migration-dev`), with **watch** on `cmd/migration`, `services/<servicename>/entities` (including `migrator.go`), and `shared`.
 - **Production** — Build a **`migration`** binary in the prod image (`Dockerfile_prod` target `quizdo-migration`). Run **one-shot** migrations before or alongside rollout (e.g. `compose.prod.yaml` **`be-migration`** with **`profiles: [migrate]`**), or equivalent CI/deploy step. Push the **`be-migration`** image with the rest of the stack (`compose.deploy.yaml`). **After a successful run**, **record the migration completion datetime** (audit / operations).
