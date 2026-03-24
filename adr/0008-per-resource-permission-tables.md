@@ -23,18 +23,26 @@ The repository layer uses an embeddable contract so each resource repository exp
 Implementations must satisfy `iface.WithPermission[P]` (`backend/shared/lib/iface/with_permission.go`). `UserCan` / `UpdatePermissions` are intended for use from handlers, services, or HTTP middleware when deciding whether to allow an action.
 
 ```go
-// Shared embeddable WithPermission interface (generic over permission type P)
-type WithPermission[P any] interface {
+// P is each resource’s own permission type (e.g. category.Permission); constrained by ResourcePermission.
+type ResourcePermission interface {
+	~int8 | ~int16 | ~int32 | ~uint8 | ~uint16 | ~uint32
+}
+
+type WithPermission[P ResourcePermission] interface {
 	UserCan(ctx context.Context, resourceID int32, userID int32, perm P) (bool, error)
 	UpdatePermissions(ctx context.Context, resourceID int32, userID int32, perm P) error
 }
 
-// Example: CategoryRepository embeds WithPermission for category.Permission
+//... repository implementation ...
 type CategoryRepository interface {
 	iface.WithPermission[category.Permission]
+	// List returns categories matching the provided scopes.
 	List(ctx context.Context, scopes ...func(*gorm.DB) *gorm.DB) ([]category.Category, error)
+	// GetByID returns a single category by its ID or nil when not found.
 	GetByID(ctx context.Context, id uint32) (*category.Category, error)
+	// Save creates or updates the given category (and its localized data) in a transaction.
 	Save(ctx context.Context, cat *category.Category) error
+	// Delete soft-deletes all categories with the given IDs. Related localized rows are soft-deleted as well.
 	Delete(ctx context.Context, ids []uint32) error
 }
 
@@ -49,10 +57,12 @@ func NewCategoryRepository(db *gorm.DB) CategoryRepository {
 
 HTTP middleware (or equivalent) can run before mutating handlers and call `UserCan` (or service logic built on the repository) so unauthorized requests return **403 Forbidden** without touching domain logic.
 
-The middleware would take a repository (or narrower interface) that implements `iface.WithPermission[P]` for the relevant resource. Illustrative Fiber-style wiring:
+The middleware takes (1) a repository implementing `iface.WithPermission[P]` for that resource, and (2) the required permission bitmask `P` (the resource’s own enum, e.g. `category.PermEdit`). The resource id is taken from the route (default path param `id`). Example:
 
 ```go
-app.Post("/categories", middleware.WithPermission(categoryRepository), handler.CreateCategory)
+cat.Delete("/:id", middleware.RequirePermission(categoryRepo, category.PermEdit), handler.DeleteCategory)
+// non-default path param name:
+cat.Delete("/:catId", middleware.RequirePermission(categoryRepo, category.PermEdit, "catId"), handler.DeleteCategory)
 ```
 
 
