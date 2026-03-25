@@ -14,16 +14,16 @@ We want clear **dev** ergonomics (rebuild on entity changes like other Go servic
 
 ## Decision
 
-- **Dedicated migration service** — Only **`cmd/migration`** **imports** domain packages and calls their **`Migrate` methods**.
+- **Dedicated migration service** — **`services/migration`** runs config load, parallel **`Step.Migrate`** per DB, then optional seeds by **string key** using **`map[string]func() error`** only; it does **not** import domain entity packages. **`cmd/migration`** registers concrete **`Migrate`** functions and seed closures (domain imports stay in **`cmd`**).
 
 Domains expose migration entrypoints in **`services/<servicename>/entities/migrator.go`** (`package entities`, `func Migrate`) and will add an call to it in the migrator command;
 
 They **do not** import the whole migration orchestrator (no circular dependency). `TableMigrationConfig`, hooks, and custom steps live in that file in the top level of the entity package.
 
-- **`backend/cmd/migration`** — Loads config (shared host/port/user/pass), then for **each** registered service opens a connection to that service’s database name from env (e.g. **`CNT_DB_NAME`**, **`IDE_DB_NAME`**) and calls the matching `entities.Migrate`. The effective `DB_NAME` changes **per step** during the run; a placeholder `DB_NAME` in env may exist only to satisfy config parsing.
+- **`backend/services/migration`** — Loads config (shared host/port/user/pass), then for **each** supplied **`Step`** opens that step’s database name from env (e.g. **`CNT_DB_NAME`**) and calls **`Step.Migrate`**. **`cmd/migration`** builds the **`[]Step`** list and seed name→runner map.
 - We will use the Postgres superuser (or equivalent) from env so it can migrate every service database in one process.
 - **Development** — In development migrations are run as parallell service that will watch for changes in the entities and run the migrations.  
-    - Docker Compose service **`be-migration`** uses **`migration-watch.sh`** (`inotifywait`) to rebuild and run `cmd/migration` on file changes; **Compose develop.watch** syncs sources from the host. Other Go services still use **Air**; migration intentionally does not and only runs on file changes, then exits and reruns when the sources change.
+    - Docker Compose service **`be-migration`** uses **`migration-watch.sh`** (`inotifywait`) to rebuild and run the migration binary on file changes; **Compose develop.watch** syncs sources from the host. Other Go services still use **Air**; migration intentionally does not and only runs on file changes, then exits and reruns when the sources change.
 - **Production** — Build a **`migration`** binary in the prod image (`Dockerfile_prod` target `quizdo-migration`). **One-shot** container: **`cmd/migration` exits 0** on success (no healthcheck). **`be-content`** depends on **`be-migration`** with **`condition: service_completed_successfully`**. Push the **`be-migration`** image with the rest of the stack (`compose.deploy.yaml`). **After a successful run**, **record the migration completion datetime** (audit / operations) where desired.
 - **Runtime services** (e.g. `cmd/content`) **do not** run migrations on startup; they assume schema is already applied (enforced in dev by Compose ordering).
 - The migration service could be extended to run seeding data after the migrations based on given flags.
@@ -43,4 +43,4 @@ They **do not** import the whole migration orchestrator (no circular dependency)
 
 - **Separate build and deploy** for API and migration services. Two artifacts to build and deploy (microservices + migration image).
 - **Migration must run** (or have already run) before new code that depends on new schema; release discipline is required.
-- **Identity DB** (or other services) will need to add `services/<servicename>/entities/migrator.go` and an extra `entities.Migrate` call in `cmd/migration/main.go`.
+- **Identity DB** (or other services) will need to add `services/<servicename>/entities/migrator.go` and register an extra **`Step`** in **`cmd/migration`** (e.g. `migrationSteps()`), not in `services/migration`.
