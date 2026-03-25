@@ -41,6 +41,6 @@ They **do not** import the whole migration orchestrator (no circular dependency)
 
 ### Tradeoffs
 
-- **Two artifacts** to build and deploy (API image + migration image), or a clear runbook for `docker compose run` / job-style execution.
+- **Separate build and deploy** for API and migration services. Two artifacts to build and deploy (microservices + migration image).
 - **Migration must run** (or have already run) before new code that depends on new schema; release discipline is required.
 - **Identity DB** (or other services) will need to add `services/<servicename>/entities/migrator.go` and an extra `entities.Migrate` call in `cmd/migration/main.go`.
