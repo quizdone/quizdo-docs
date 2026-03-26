@@ -16,6 +16,10 @@ Inter-service communication uses gRPC; HTTP APIs and frontend consume the same d
 - **gRPC** — Use Protobuf for gRPC inter-service communication.
 - **Unified DTOs** — Same Proto messages used for gRPC, REST (JSON), and frontend TypeScript types via `buf generate`.
 
+### Buf remote plugins
+
+Code generation uses **remote plugins** from the Buf Schema Registry (e.g. `buf.build/protocolbuffers/go`, `buf.build/grpc/go`, `buf.build/community/stephenh-ts-proto`) so a single `buf generate` produces Go and TypeScript **without** installing `protoc`, `protoc-gen-go`, or `protoc-gen-ts_proto` locally. Plugin versions are pinned in `buf.gen.yaml` for reproducible builds across machines and CI.
+
 ## Consequences
 
 - Single source of truth for service contracts and data structures
