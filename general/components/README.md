@@ -1,6 +1,6 @@
 # App components
 
-The app logic is composed of the following parts. For architecture and deployment see [Architecture](../architecture.md).
+The app logic is composed of the following parts. For architecture and deployment see [ADRs](../adr/README.md).
 
 - [Categories](Category.md) - Categories (subjects, fields, custom categories) for categorizing Questions, Quizzes, Campaigns
 - [Questions](Question.md) - Questions parametrically defined questions for generating different versions (values, languages)
