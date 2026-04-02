@@ -1,15 +1,15 @@
-# Question Component
+# Question component
 
 ## Overview
 
-Questions are the fundamental building blocks of the Quizdo application. They contain the raw educational content that can be processed by the generator to produce various exam formats and contexts. Questions support both closed (multiple choice) and open-ended formats with parametric content generation.
+Questions are the **atomic content** the **[Generator](Generator.md)** turns into concrete items (variants, languages, scored answers). They support closed and open-ended styles, **parametric** fields, and **per-locale** text.
 
-> Categories are hiearhical, so questions can be organized in a tree structure.
+> **Categories** are hierarchical; questions are linked to **one or more** categories via a junction table. **[Tags](Tags.md)** add a second, non-hierarchical labelling axis (when implemented server-side).
 
 ## Purpose
 
-- **Content Storage**: Store question parameters and metadata
-- **Parametric Generation**: Support variable content for different question instances
-- **Multi-language Support**: Provide localized question content
-- **Answer Management**: Handle multiple answer options and correct answers
-- **Categorization**: Organize questions/quizzes/campaigns by subjects and topics
+- **Storage**: Question row + **localized** rows (title, description, content, variables, answers JSON, etc.).
+- **Parametric generation**: Template variables and generator-compatible answer structures.
+- **Multi-language**: `QuestionLocalized`-style data per locale.
+- **Answers**: Multiple options, correctness, shuffle/final flags on the base question where applicable.
+- **Organization**: **Categories** (tree) and **tags** (flat / groups) for filters and exams.

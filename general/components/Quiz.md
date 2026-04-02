@@ -1,14 +1,16 @@
-# Quiz Component
+# Quiz component
+
+In the product language, a **Quiz** is an **exam**: a defined set of questions (or **queries** that select questions), layout/rendering options, and rules for live or static delivery.
+
+The **backend** and **proto** use the name **Exam**; the **frontend** “Exams” area matches the **Questions** pattern (category finder + table).
 
 ## Overview
 
-Quizzes (exams) are collections of questions that can be generated and administered in various contexts. The Quiz component manages quiz configurations, question selection strategies, and the generation of quiz instances. It supports both one-time generation and reusable quiz templates.
+- **Exam** resource: list of questions and/or **query blocks** that describe how to pull questions (by question ids, **category**, **tags**, counts, filters). See [Exam (Content API)](../../backend/content/exam/README.md).
+- **Generation**: Instances are produced with the **Generator** pipeline where parametric content applies.
 
 ## Purpose
 
-- **Question Collection**: Aggregate questions from various sources and categories
-- **Flexible Selection**: Support multiple question selection strategies
-- **Context Awareness**: Generate quizzes for different contexts (print, online, practice)
-- **Randomization**: Shuffle questions and answers for varied experiences
-- **Reusability**: Create quiz templates that can generate multiple instances
-- **Localization**: Support multi-language quiz content
+- Aggregate questions from categories/tags and other filters.
+- Support previews and **live testing** (Collector → Evaluator flow).
+- Reuse templates to generate multiple instances (randomization, counts), subject to product rules.
