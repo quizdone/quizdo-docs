@@ -53,6 +53,7 @@
 
 ## Documentation
 
+- [**General components**](general/components/README.md) — User-readable meaning of domains (categories, questions, exams, tags, …); product “user story” in one place.
 - [**ADRs**](adr/README.md) — Architecture Decision Records
 - [**Backend**](backend/README.md) — Microservices (identity, content, collector, evaluator), layout, running.
 - [**Frontend**](frontend/README.md) — GUI (Next.js/React), consumed APIs, tech.

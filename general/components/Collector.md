@@ -1,14 +1,13 @@
-# Collector Component
+# Collector component
 
 ## Overview
 
-Collector is responsible for collecting results from live testing. It gathers answers and outcome data when users take Quizzes, Campaigns, or individual Questions in a live or testing session. The collected data is used for evaluation and reporting.
+The **Collector** captures **live session** outcomes when users run **Questions**, **Quizzes/Exams**, or **Campaigns** in test or live mode. Raw data feeds **Evaluator** for grading and reports.
 
-> The **Live testing service** (backend) uses **file-based test logging**: it produces **text files** with test results and watched behaviors. These files are consumed by the Evaluator for listing results and generating reports. The Collector (e.g. HTTP/WebSocket or gRPC client) feeds data into the livetesting service, which persists it to disk.
+> The live-testing path persists **file-based logs** (JSON lines) consumed by the Evaluator service. See [Collector (backend)](../../backend/collector/README.md).
 
 ## Purpose
 
-- Capture answers and scores from live Quiz, Campaign, and Question sessions
-- Associate results with specific sessions and users
-- Persist raw results via file-based test logging (text files produced by the livetesting service) for later evaluation and analysis
-- Allow Evaluator to show, evaluate, and report the results
+- Record answers, timings, and behaviour signals per session.
+- Tie results to users/sessions for auditing.
+- Decouple high-volume capture from evaluation UIs.

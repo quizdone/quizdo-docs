@@ -1,16 +1,20 @@
-# Evaluator Component
+# Evaluator component
 
 ## Overview
 
-Evaluator displays test answers and student behavior from live testing data and allows evaluation of test results. It consumes data collected by the Collector, shows correct and user answers, and supports grading and feedback. It can generate reports summarizing performance and outcomes.
+The **Evaluator** lists live-test **results**, shows item-level detail, supports **grading**, and can produce **reports**. It consumes **Collector** output (file-based logs) and may use the DB for in-progress evaluation state.
 
-**It allows automatic evaluation** of the answers using question results (and AI) if enabled.
+**Grading is not fully automatic by default.** Modes include:
 
-> **Evaluator** is a HTTP service.
+- **Manual** — Teacher feedback and marks.
+- **Automatic** — Against **predefined** correct/incorrect answers where the question allows it.
+- **AI-assisted** — May suggest scores or comments; can be **flagged for manual review** so nothing is blindly finalized.
+
+> **Evaluator** is an HTTP service in the backend. See [Evaluator (backend)](../../backend/evaluator/README.md).
 
 ## Purpose
 
-- List answers collected in the live testing
-- Show answer details
-- Evaluate answer
-- Generate report
+- List sessions / results eligible for review.
+- Show prompts, learner answers, and reference solutions where available.
+- Apply evaluation policy (manual / rules / AI) and persist outcomes.
+- Export or display **reports**.

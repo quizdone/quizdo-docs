@@ -1,5 +1,7 @@
 # Generator service
 
+> [**Generator**](../../general/components/Generator.md)
+
 ## Overview
 
 Generator get parameteric question or exam and process it to generate the result question or exam.

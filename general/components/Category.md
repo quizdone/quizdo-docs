@@ -1,21 +1,24 @@
-# Category Component
+# Category component
 
 ## Overview
 
-Categories are the core organizational structure of the Quizdo application, allowing users to categorize their questions and use them in quizzes. Categories provide a hierarchical system for organizing educational content by subjects, fields, and custom user-defined categories.
+Categories are the **hierarchical** library structure in Quizdo: subjects, fields, and user-defined nodes. Users attach **questions** and browse **exams** under categories via the **category finder**.
 
 ## Purpose
 
-- **Content Organization**: Categorize questions and quizzes by subject matter
-- **Hierarchical Structure**: Support multi-level categorization (Subject → Field → Custom categories)
-- **Multi-language Support**: Provide localized names and descriptions
-- **Access Control**: Manage public/private visibility of categories
-- **User Management**: Track category ownership and authorship
+- **Content organization**: Place questions and exams in a tree (`parent_id`, `depth`).
+- **Multi-language**: Localized title, shortcut, description per locale (`CategoryLocalized` in **proto** `models.v1`).
+- **Visibility**: Public vs author-only; tenant-scoped content (see backend RLS).
+- **Ownership**: Author and optional tenant specific confirmation flow (`unconfirmed`).
 
-## Hierarchical Structure
+## Hierarchical structure
 
-Categories support a multi-level hierarchy:
+1. **Depth 0** — Subjects (e.g. Mathematics, Physics).
+2. **Depth 1** — Fields within a subject.
+3. **Depth 2+** — Custom subcategories.
 
-1. **Subject Level (Depth 0)**: Top-level subjects like Mathematics, Physics, Language Arts
-2. **Field Level (Depth 1)**: Specific areas within subjects like "Quadratic Equations" in Mathematics
-3. **Custom Level (Depth 2+)**: User-defined subcategories for fine-grained organization
+## In the current app
+
+- **Contracts**: [`proto/models/v1/category.proto`](../../../proto/models/v1/category.proto) — `Category`, `CategoryLocalized`, `CategoryMinified`, filters, create/update requests; TS/Go generated under `frontend` and `backend`.
+- **Backend**: [Content service](../../backend/content/README.md) — Fiber handlers for category CRUD; Identity **gRPC** for profile after JWT verification.
+- **Frontend**: **Categories** and other content pages use **`CategoriesFinder`** (tree, lazy children, URL `path` sync), React Query, and server actions such as `listCategories`.

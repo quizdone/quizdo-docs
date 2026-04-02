@@ -1,6 +1,8 @@
 # Category (Content API)
 
-- Basic endpoints for CRUD category management.
+> [**Category**](../../../general/components/Category.md)
+
+- CRUD category management (implementation).
 - Category is the core of the Quizdo app, allowing users to categorize their questions and use it in their quizzes.
 - **Hierarchical levels** (using *ParentID*):
     1. Subject (Math, Physics, ...)

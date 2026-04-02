@@ -1,5 +1,7 @@
 # Frontend
 
+> [**General components**](../general/components/README.md)
+
 The frontend is the **GUI** of the application: a `Next.js` app used to manage content and setup live testing and result collection. It consumes the backend **Content CRUD API** for exams and campaigns.
 
 > It's responsible for the main auth and user management, session management, API key management, preferences management, etc.

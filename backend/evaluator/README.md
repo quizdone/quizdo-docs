@@ -1,5 +1,7 @@
 # Evaluator service
 
+> [**Evaluator**](../../general/components/Evaluator.md)
+
 HTTP API for **manual**, **semi-automatic**, and **automatic** evaluation of live testing results. It provides a **list of results from users who launched live testings** — a collection of test results and watched behaviors — and exposes endpoints for listing, grading, and reporting.
 
 ## Data source
@@ -12,9 +14,8 @@ The Evaluator gets data from **Collector text files** (file-based test logging u
 
 ## Role
 
-- **Log live test sessions** — User enables the live testing and the Evaluator service keeps track of the session token etc. Waits for the message that the results are available and then reads the file-based test logging to get the results and tells user.
-- **List results** — List live testing runs: collection of test results and watched behaviors from users who launched live testings (exams, campaigns).
-- **Answer details** — Show question, correct answer, and user answer for each response; show behavior data when available.
+- **List results from live testing** — List live testing runs: collection of test results and watched behaviors from users who launched live testings (exams, campaigns).
+- **Show answer details** — Show question, correct answer, and user answer for each response; show behavior data when available and let the user evaluate the answers manually or assist with AI.
 - **Evaluate** — Manual grading, semi-automatic (e.g. by rules), or automatic evaluation (e.g. using question result data or AI when enabled). Evaluation type for each question is logged in the results database.
     - Manual grading is done by the user seeing the results and grading the answers manually.
     - Semi-automatic grading is done using predefined answers and rules.
