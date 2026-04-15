@@ -129,7 +129,7 @@ When using WSL (Windows Subsystem for Linux), you may encounter several issues:
 - When working on Windows, `Git` / `VS Code` may automatically convert line endings from `LF` to `CRLF`.
 - This can cause issues in WSL or Linux environments where LF is expected.
 
-- If `.gitattributes` doesn't exist, crea one with: 
+- If `.gitattributes` doesn't exist, create one with: 
 
 `* text=auto eol=lf`
 
