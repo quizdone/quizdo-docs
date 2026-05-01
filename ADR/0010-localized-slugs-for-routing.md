@@ -17,8 +17,9 @@ We need one strategy for readable URLs, locale-aware routing, and backward compa
   - allowed format: `^[a-z0-9]+(?:-[a-z0-9]+)*$`
   - reserved words blocked for categories and URI-critical endpoints.
 - Keep existing numeric ID compatibility:
-  - detail/read/delete endpoints accept `/:idOrSlug`
-  - create/update accepts numeric ID only in body (`id`) when updating.
+  - **List/Detail** endpoints accept `GET /<resource>/:idOrSlug` (numeric segment → ID lookup, otherwise slug lookup). Optional list filtering by slug and fulltext is specified in [ADR 0011](./0011-slug-identified-lookup.md).
+  - **Delete** uses numeric ID in the path only: `DELETE /<resource>/:id`. Any earlier assumption here that delete accepted `/:idOrSlug` is **superseded by [ADR 0011](./0011-slug-identified-lookup.md)**.
+  - **Create/update** accepts numeric ID only in body (`id`) when updating.
 - Enforce uniqueness at persistence layer with composite key: `tenant_id + locale + slug`.
 - Use deterministic collision handling at write time (`slug`, `slug-2`, `slug-3`, ...).
 - Category hierarchical routing uses slug path segments in the UI (`path=a|b|c`) with fallback resolution for legacy shortcut-based links during rollout.
@@ -28,7 +29,9 @@ We need one strategy for readable URLs, locale-aware routing, and backward compa
 - URLs become human-readable and locale-scoped across resources.
 - Existing ID links remain valid, reducing rollout risk.
 - Backfill migration is required for existing rows with missing slugs.
-- API handlers need dual parser logic (numeric vs string reference) and explicit reserved word checks.
+- `List` endpoints support optional query filtering by the exact slug. `Slug` is also included in the fulltext search index.
+- `Detail` loader handler need dual parser logic for the `:idOrSlug` path segment and check for reserved words and NON-ASCII characters.
+- `Delete` or `Create/Update` handlers stay ID-only (no slug parsing on delete or create/update).
 
 ## Rollout Notes
 
