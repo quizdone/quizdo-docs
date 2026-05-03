@@ -13,7 +13,7 @@ We will only use it for `READ` and filtering operations. No `CREATE` or `UPDATE`
 ## Decision
 
 We will use slug-capable selectors for **read/detail**:
-  - `GET /<resource>/:idOrSlug` — handler parses the segment: numeric → `GetByID`, otherwise → `GetBySlug`.
+  - `GET /<resource>/:idOrSlug` — handler (e.g. `GetCategory`, `GetTagGroup`, `GetTag`) parses the segment: numeric → service `GetByID`, otherwise → `GetBySlug`.
   - Where **collection/list** endpoints exist (`GET /<resource>` or resource-specific list routes), support optional query filtering (partial matching) for **slug** (add `slug` to the filter params and to fulltext index). Exact query parameter names are defined per handler but the capability is shared.
 
 ## Consequences
