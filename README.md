@@ -57,3 +57,86 @@
 - [**ADRs**](adr/README.md) — Architecture Decision Records
 - [**Backend**](backend/README.md) — Microservices (identity, content, collector, evaluator), layout, running.
 - [**Frontend**](frontend/README.md) — GUI (Next.js/React), consumed APIs, tech.
+
+## Troubleshooting WSL
+
+When using WSL (Windows Subsystem for Linux), you may encounter several issues:
+
+### Docker integration issues
+- When installing or running Docker for the first time, WSL integration may fail.
+- A simple fix is to restart WSL:
+```bash
+    wsl --shutdown
+```
+- After restarting, Docker should properly integrate with WSL.
+
+### Git + SSH issues (especially with submodules)
+- When using git pull over SSH inside WSL, the initial pull may work, but submodules can fail.
+- This usually happens because WSL does not have access to your SSH keys from Windows.
+- Fix: Copy SSH keys into WSL
+
+```bash
+    mkdir -p ~/.ssh
+    cp /mnt/c/Users/<your-username>/.ssh/id_ed25519* ~/.ssh/
+
+    chmod 600 ~/.ssh/id_ed25519
+    chmod 644 ~/.ssh/id_ed25519.pub
+
+    eval "$(ssh-agent -s)"
+    ssh-add ~/.ssh/id_ed25519
+```
+- Then verify the connection:
+```bash
+    ssh -T git@github.com
+```
+- Alternative
+    Instead of configuring SSH in WSL, you can use `Git Bash` on Windows for cloning, pulling, and pushing changes.
+
+### Working with submodules
+
+- After cloning the repository, make sure to initialize and update submodules:
+```bash
+    git submodule update --init --recursive
+```
+
+- Then switch into each submodule directory:
+
+```bash
+    cd <submodule-directory>
+```
+- By default, submodules are checked out at a specific commit (detached HEAD),
+- which may not include the latest changes.
+
+- To work with the latest version, switch to the dev branch (called main in this project):
+
+```bash
+    git switch dev
+    # or
+    git checkout dev
+```
+
+- Then pull the latest changes:
+```bash
+    git pull
+```
+
+- Note: Submodules are pinned to specific commits in the parent repository.
+- Switching to a branch like dev ensures you are working with the latest updates instead.
+
+
+### Line endings (LF vs CRLF)
+
+- When working on Windows, `Git` / `VS Code` may automatically convert line endings from `LF` to `CRLF`.
+- This can cause issues in WSL or Linux environments where LF is expected.
+
+- If `.gitattributes` doesn't exist, create one with: 
+
+`* text=auto eol=lf`
+
+#### Fix: enforce LF using `.gitattributes`
+```bash
+    git add .gitattributes
+    git add --renormalize .
+```
+
+- this will renormalize all line endings to LF
