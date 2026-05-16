@@ -9,6 +9,7 @@ The backend is split into **microservices**, each with its own entrypoint, data,
 - Each service has its own **database** for data isolation.
 - Services use **gRPC** or **HTTP server (Fiber)** for APIs.
 - **GORM** with **RLS (Row Level Security)** for DB access.
+- **Resource ACLs** — Per-type permission tables and bitmask checks in domain services (Content: categories, questions, tags); see [ADR 0008](../ADR/0008-per-resource-permission-tables.md).
 - Auth is handled by **AuthJS** in the app (frontend signs JWTs with an RSA private key)
     - backend services that protect APIs (e.g. Content) verify JWTs with an RSA public key.
     - See [ADR 0007: Docker Secrets and RSA Key Pair for JWT](../adr/0007-docker-secrets-rsa-jwt.md).
