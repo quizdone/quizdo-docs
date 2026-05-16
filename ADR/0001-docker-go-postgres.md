@@ -15,7 +15,7 @@ For the backend we will use Go and Fiber and GORM for the database access, as th
 ## Decision
 
 - **Docker** — Containerize all services for isolation, reproducibility, and deployment.
-- **Production images** — Go services: multi-stage build, `CGO_ENABLED=0`, `scratch` runtime with CA certs and zoneinfo from Alpine, non-root `USER 10001`. Next.js: `output: 'standalone'`, `oven/bun:distroless` runtime with `CMD ["server.js"]`; Drizzle migrations run in a separate one-shot image (`fe-migration`). Production Compose applies `read_only`, `tmpfs` on `/tmp`, and `cap_drop: [ALL]` on application containers (not PostgreSQL).
+- **Production images** — Go services: multi-stage build, `CGO_ENABLED=0`, `scratch` runtime with CA certs and zoneinfo from Alpine, non-root `USER 10001`. Next.js: `output: 'standalone'`, `oven/bun:alpine` runtime; Drizzle `db:migrate` runs in the container entrypoint before `bun server.js`. Production Compose applies `read_only`, `tmpfs` on `/tmp`, and `cap_drop: [ALL]` on application containers (not PostgreSQL).
 - **Go** — Backend language for services (performance, single binary, strong concurrency).
 - **PostgreSQL** — Primary relational database for both frontend and backend data.
 - **Redpanda** — Kafka-compatible event streaming for async communication between services (see [ADR 0014](0014-redpanda-event-streaming.md); supersedes the earlier RabbitMQ plan).
