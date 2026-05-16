@@ -15,9 +15,10 @@ For the backend we will use Go and Fiber and GORM for the database access, as th
 ## Decision
 
 - **Docker** — Containerize all services for isolation, reproducibility, and deployment.
+- **Production images** — Go services: multi-stage build, `CGO_ENABLED=0`, `scratch` runtime with CA certs and zoneinfo from Alpine, non-root `USER 10001`. Next.js: `output: 'standalone'`, `oven/bun:alpine` runtime; Drizzle `db:migrate` runs in the container entrypoint before `bun server.js`. Production Compose applies `read_only`, `tmpfs` on `/tmp`, and `cap_drop: [ALL]` on application containers (not PostgreSQL).
 - **Go** — Backend language for services (performance, single binary, strong concurrency).
 - **PostgreSQL** — Primary relational database for both frontend and backend data.
-- **RabbitMQ** — Message broker for async communication between services.
+- **Redpanda** — Kafka-compatible event streaming for async communication between services (see [ADR 0014](0014-redpanda-event-streaming.md); supersedes the earlier RabbitMQ plan).
 
 ## Consequences
 
@@ -26,7 +27,7 @@ For the backend we will use Go and Fiber and GORM for the database access, as th
 - Single-binary Go services simplify deployment
 - Release containers are built on CI/CD pipeline and stored in the GitHub Container Registry (GHCR) to reduce the final deployment cost.
 - PostgreSQL provides RLS, JSON support, and mature tooling. It's one of the fastest and most popular databases for backend development.
-- RabbitMQ enables decoupled, async workflows (e.g. background jobs, event-driven flows) without blocking HTTP requests.
+- Redpanda enables decoupled, async workflows (domain events, background processing) without blocking HTTP/gRPC; consumers use the Kafka API and consumer groups.
 
 ## Diagram
 
@@ -47,7 +48,7 @@ flowchart TB
             end
 
             PG[(PostgreSQL)]
-            MQ[RabbitMQ]
+            RP[Redpanda]
         end
     end
 
@@ -58,9 +59,9 @@ flowchart TB
     Content --> PG
     Identity --> PG
     Generator --> PG
-    Content --> MQ
-    Identity --> MQ
-    Generator --> MQ
+    Content --> RP
+    Identity --> RP
+    Generator --> RP
 
     style Host fill:#b3e5fc,stroke:#5eb8e8,color:#2a7ab5
     style Entrypoints fill:#f8bbd0,stroke:#e891a8,color:#a82d5a
