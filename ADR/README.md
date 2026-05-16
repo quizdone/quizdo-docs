@@ -16,4 +16,6 @@ ADR
 ├── [0009-dedicated-migration-service.md](0009-dedicated-migration-service.md)
 ├── [0010-localized-slugs-for-routing.md](0010-localized-slugs-for-routing.md)
 ├── [0011-slug-identified-lookup.md](0011-slug-identified-lookup.md)
+├── [0012-content-question-render-via-generator-grpc.md](0012-content-question-render-via-generator-grpc.md)
+├── [0013-question-content-mdx-fixed-components.md](0013-question-content-mdx-fixed-components.md)
 └── README.md

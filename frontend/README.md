@@ -14,7 +14,7 @@ The frontend is the **GUI** of the application: a `Next.js` app used to manage c
 
 ## Consumed APIs
 
-- **Content API** — CRUD on content (categories, questions, exams, campaigns). See [Content service](../backend/content/README.md).
+- **Content API** — CRUD on content (categories, questions, exams, campaigns). List/detail DTOs include `permission` (bitmask for the current user). UI checks capabilities with `hasPermission(mask, *PermissionBit)` — see [ADR 0008](../ADR/0008-per-resource-permission-tables.md). See [Content service](../backend/content/README.md).
 - **Evaluator API** — API for manual/semi-automatic/automatic evaluating the results of live testing. See [Evaluator service](../backend/evaluator/README.md).
 
 ## Tech

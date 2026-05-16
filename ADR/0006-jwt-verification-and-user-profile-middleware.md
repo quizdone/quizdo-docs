@@ -21,6 +21,8 @@ Authenticate HTTP requests with JWTs and expose a verified user identity and pro
 
 Single verification point; clear split between auth and profile loading; profile from claims or Identity by swapping the loader.
 
+**Authorization** for shared content (categories, questions, tags, …) is **not** decided in this middleware: after the profile is in context, the Content service applies per-resource permission tables and route middleware ([ADR 0008](0008-per-resource-permission-tables.md)).
+
 ## Workflow
 
 ```mermaid

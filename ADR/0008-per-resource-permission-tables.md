@@ -6,85 +6,116 @@ Accepted
 
 ## Context
 
-The platform shares educational content (categories, questions, exams, and similar resources) between users and teams. We need a durable, query-efficient way to represent **who may do what** on each resource without overloading the main entity rows or using models that break down as the number of users, collaborators, and permission combinations grows.
+The platform shares educational content (categories, questions, tags, tag groups, and similar resources) between users and teams. We need a durable, query-efficient way to represent **who may do what** on each resource without overloading the main entity rows or using models that break down as the number of users, collaborators, and permission combinations grows.
 
-Alternative thoughts:
-- creating a single global polymorphic permission table for all resources in every microservice
+Alternatives considered:
+
+- A single global polymorphic permission table for all resources in every microservice (rejected: weaker FK constraints, harder RLS, mixed lifecycles).
 
 ## Decision
 
-We will store access control bitmask permissions in **dedicated relational tables per resource type**.  
-> E.g. `category_permissions` with rows keyed by user and category, each row representing a bitmask (unix like) permissions for a single user.
+### Storage
 
-## Custom interface
+Store access control as **Unix-style bitmasks** in **dedicated relational tables per resource type**. Each row is keyed by `(user_id, resource_id)` where `user_id` is the Identity **`userSerialId`** (`id_serial`, `int32`).
 
-The repository layer uses an embeddable contract so each resource repository exposes permission checks and updates in a consistent shape.
+| Resource   | Permission table            | Go type                         | Proto enum                 |
+|------------|-----------------------------|---------------------------------|----------------------------|
+| Category   | `category_permissions`      | `category.Permission` (`int8`)  | `CategoryPermissionBit`    |
+| Question   | `questions_permissions`     | `question.Permission` (`int8`)  | `QuestionPermissionBit`    |
+| Tag        | `tags_permissions`          | `tag.Permission` (`int8`)       | `TagPermissionBit`         |
+| Tag group  | `tag_groups_permissions`    | `taggroup.Permission` (`int8`)  | `TagGroupPermissionBit`    |
 
-Implementations must satisfy `iface.WithPermission[P]` (`backend/shared/lib/iface/with_permission.go`). `UserCan` / `UpdatePermissions` are intended for use from handlers, services, or HTTP middleware when deciding whether to allow an action.
+`perm_bits` is persisted as `smallint`; API responses expose the effective mask as **`uint32 permission`** on `Category`, `CategoryMinified`, `Question`, `QuestionMinified`, `Tag`, `TagMinified`, `TagGroup`, and `TagGroupMinified` (declared as the **last field** in each proto message; field numbers unchanged).
+
+### Permission bits (content service)
+
+Bits are powers of two. **Test** a capability with `(mask & bit) == bit` (all required bits must be set). **Combine** grants with bitwise OR.
+
+| Bit    | Category | Question | Tag / tag group |
+|--------|:--------:|:--------:|:---------------:|
+| VIEW   | 1        | 1        | 1               |
+| EXTEND | 2        | —        | —               |
+| EDIT   | 4        | 2        | 2               |
+| MANAGE | 8        | 4        | 4               |
+
+- **EXTEND** (categories only): create child categories under a node the user does not own (finder “add child”).
+- **MANAGE**: destructive actions (e.g. `DELETE` routes).
+
+Tag **ACL rows are on the tag group**, not per-tag: granting edit on a group governs tags in that group (`POST /tag-group/:groupId/tags` checks group permission).
+
+### Two enforcement layers
+
+1. **Mutations (HTTP middleware and `UserCan`)** — Before create/update/delete handlers run, `middleware.RequirePermission` / `RequirePermissionURIParam` calls `repo.UserCan(ctx, resourceID, userID, perm)`. Allowed when the user is the **author** (`author_id == userSerialId`) **or** `(perm_bits & required) == required`. **`public` does not grant edit/manage** here; it only affects read/list masks below.
+2. **Reads and listings (`list_permission`)** — List/detail queries apply GORM scope `WithListPermissionScope` / `WithListPermissionScopeFromContext` so each row gets a computed `list_permission` column in the same round-trip:
+
+   ```text
+   list_permission =
+     (author_id = viewer ? FULL_MASK : 0)
+     | COALESCE(perm_bits, 0)
+     | (public ? VIEW : 0)
+   ```
+
+   `FULL_MASK` is all bits for that resource type (e.g. category: VIEW|EXTEND|EDIT|MANAGE). Mapped to proto `permission` on the way out. If there is no profile in context (`viewerSerial == 0`), the scope is a no-op (no join).
+
+Services may apply additional **visibility** rules (e.g. categories: hide `unconfirmed` rows from non-authors in listings) independent of the permission table.
+
+### Repository contract
+
+Each resource repository embeds `iface.WithPermission[P]` (`backend/shared/lib/iface/with_permission.go`):
 
 ```go
-// P is each resource’s own permission type (e.g. category.Permission); constrained by ResourcePermission.
-type ResourcePermission interface {
-	~int8 | ~int16 | ~int32 | ~uint8 | ~uint16 | ~uint32
-}
-
 type WithPermission[P ResourcePermission] interface {
 	UserCan(ctx context.Context, resourceID int32, userID int32, perm P) (bool, error)
 	UpdatePermissions(ctx context.Context, resourceID int32, userID int32, perm P) error
 }
-
-//... repository implementation ...
-type CategoryRepository interface {
-	iface.WithPermission[category.Permission]
-	// List returns categories matching the provided scopes.
-	List(ctx context.Context, scopes ...func(*gorm.DB) *gorm.DB) ([]category.Category, error)
-	// GetByID returns a single category by its ID or nil when not found.
-	GetByID(ctx context.Context, id uint32) (*category.Category, error)
-	// Save creates or updates the given category (and its localized data) in a transaction.
-	Save(ctx context.Context, cat *category.Category) error
-	// Delete soft-deletes all categories with the given IDs. Related localized rows are soft-deleted as well.
-	Delete(ctx context.Context, ids []uint32) error
-}
-
-func NewCategoryRepository(db *gorm.DB) CategoryRepository {
-	return &categoryRepository{
-		db: db,
-	}
-}
 ```
 
-## Middleware (pattern)
+`UserCan` results are cached per repository instance (otter); cache is cleared when `UpdatePermissions` succeeds.
 
-HTTP middleware (or equivalent) can run before mutating handlers and call `UserCan` (or service logic built on the repository) so unauthorized requests return **403 Forbidden** without touching domain logic.
+### HTTP middleware (Content service)
 
-The middleware takes (1) a repository implementing `iface.WithPermission[P]` for that resource, and (2) the required permission bitmask `P` (the resource’s own enum, e.g. `category.PermEdit`). The resource id is taken from the route (default path param `id`). Example:
+`backend/shared/middleware/permission.go` — requires JWT profile (`GetProfileFromContext`). Resource id from path param (default `id`; use `RequirePermissionURIParam` for names like `groupId`). Options: `AllowEmptyURIParam: true` for routes without an id (e.g. `POST /cat/` create).
+
+Example (Content router):
 
 ```go
-cat.Delete("/:id", middleware.RequirePermission(categoryRepo, category.PermEdit), handler.DeleteCategory)
-// non-default path param name:
-cat.Delete("/:catId", middleware.RequirePermission(categoryRepo, category.PermEdit, "catId"), handler.DeleteCategory)
+cat.Post("/", middleware.RequirePermission(categoryRepo, category.PermEdit, middleware.RequirePermissionOptions{AllowEmptyURIParam: true}), handler.CreateOrUpdateCategory)
+cat.Delete("/:id", middleware.RequirePermission(categoryRepo, category.PermManage, middleware.RequirePermissionOptions{}), handler.DeleteCategory)
+tagGroups.Post("/:groupId/tags", middleware.RequirePermissionURIParam(tagGroupRepo, taggroup.PermEdit, "groupId", middleware.RequirePermissionOptions{}), tagHandler.CreateOrUpdateTag)
 ```
 
+GET routes rely on service/repository visibility and `list_permission` (and optional `UserCan` for non-public single-resource reads, e.g. questions).
+
+### Frontend
+
+Use generated `*PermissionBit` enum values with `hasPermission(mask, bit)` (`frontend/src/lib/permission/hasPermission.ts`): `(permissionMask & wantPermission) === wantPermission`. Drive UI affordances (edit, delete, add child) from `permission` on minified/full DTOs; do not re-derive author/public rules in the client.
+
+### Identity service
+
+Identity provides **authentication context** (`GetUserProfile`, serial ids). It does **not** evaluate per-resource permission tables; that stays in the Content service (and future domain services with their own `*_permissions` tables).
 
 ## Consequences
 
 ### Benefits
 
-- **Predictable lookups**: Composite indexes on `(resource_id, user_id)` or `(user_id, resource_id)` match common queries (“who can access this category?”, “what can this user access?”) with index-backed plans instead of scanning wide parent rows.
-- **Better scaling with sparse grants**: Memory and I/O stay proportional to **actual grants**. Embedding large or growing permission structures on every resource row wastes space when most resources have few collaborators; row-per-grant tables stay sparse.
-- **Reduced overflow and evolution risk**: Fixed-width bitmasks on the parent row tie permission vocabulary to a small integer width; separate rows avoid “running out of bits” when adding capabilities, and avoid awkward migrations that rewrite every parent row.
-- **Less contention on hot rows**: Permission changes update narrow rows in the permission table instead of rewriting large resource rows that are also updated for content.
-- **Clearer security and auditing**: Optional columns (`granted_at`, `granted_by`, source) and constraints (foreign keys, uniqueness per principal/resource) are straightforward; row-level security policies can reference a single, well-defined join pattern per resource.
-- **Consistent cross-cutting pattern**: The same shape (principal, resource id, encoded rights) can be repeated per domain entity, keeping services and migrations predictable.
-- **Less code duplication**: The middleware can be used for any resource type and can be changed in single place.
-- **Request can be blocked before any action is taken**: This will save resources and time and help with auditing.
+- **Predictable lookups**: Composite keys and indexes on permission tables match “who can access this resource?” queries.
+- **Sparse grants**: Row-per-grant storage scales with collaborators, not parent row width.
+- **Clear separation**: `public` + author implicit full access for **read UI**; explicit rows for collaborators; middleware for **writes**.
+- **Consistent pattern**: Same repository interface, middleware, proto `permission` field, and TS helper across resource types.
+- **Request blocked before handler work** on mutating routes.
 
 ### Tradeoffs
 
-- **More tables and joins**: Authorization checks and listings require joins (or subqueries) to permission tables; indexes must be maintained.
-- **Per-resource-type definitions**: Unlike one polymorphic table, each resource may need its own migration and repository helpers (mitigated by shared naming and small shared helpers).
-- **Cardinality**: Very large collaborator sets still mean many rows; that is expected and remains cheaper than duplicating fat structures on every parent row when indexed appropriately.
+- **More tables and joins** on list/detail queries (`LEFT JOIN` + computed column).
+- **Per-resource migrations and enums** (mitigated by shared iface and middleware).
+- **`UserCan` vs `list_permission`**: `public` grants VIEW only in listings, not in `UserCan` — callers must use the right layer for read vs write.
+- **Tag group vs tag**: Group-level ACL must be documented for API consumers.
 
 ## References
 
-- Example entity: `CategoryPermission` in the content service maps users to categories with permission bits in a dedicated table.
+- Interface: `backend/shared/lib/iface/with_permission.go`
+- Middleware: `backend/shared/middleware/permission.go`, `profile.go` (`ViewerSerialFromContext`)
+- Example entities: `CategoryPermission`, `QuestionPermission`, `TagPermission`, `TagGroupPermission` under `backend/services/content/entities/`
+- List scope example: `category.Category.WithListPermissionScope` in `category.go`
+- Proto: `proto/models/v1/category.proto`, `question.proto`, `tag.proto`, `tag_group.proto`
+- Auth chain: [ADR 0006](0006-jwt-verification-and-user-profile-middleware.md), [ADR 0005](0005-rls-microservice-architecture.md)

@@ -18,3 +18,4 @@
 - **Flexible labelling**: Filter and sort without forcing a single tree path.
 - **Tag groups** (product): Groups can constrain selection (single vs multi), values, or aggregations (e.g. avg/min/max for numeric tags).
 - **Exam queries**: Exams can select questions by **tags** and **tag group values** (see [Exam](../../backend/content/exam/README.md) query model).
+- **Access control**: Grants are stored on the **tag group** (`tag_groups_permissions`); tags inherit effective rights through their group. API messages expose `permission` (`TagPermissionBit` / `TagGroupPermissionBit`). See [ADR 0008](../../ADR/0008-per-resource-permission-tables.md).
